@@ -50,5 +50,21 @@ REST_FRAMEWORK = {
     ]
 }
 
-# OpenAI API Key (we'll use a free alternative)
-GEMINI_API_KEY = config('GEMINI_API_KEY', default='AIzaSyDzU2WmTrWp28csMI1smOkUm57wC2h9m6E')
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'ERROR',
+        },
+    },
+}
+DEMO_MODE = config('DEMO_MODE', default=False, cast=bool)
+GEMINI_API_KEY = config('GEMINI_API_KEY')
