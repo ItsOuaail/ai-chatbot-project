@@ -1,6 +1,7 @@
 import logging
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, ChatRequestSerializer, MessageSerializer
@@ -10,6 +11,7 @@ from .services import AIService
 logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def chat_message(request):
     # 1. Validate incoming data
     serializer = ChatRequestSerializer(data=request.data)
@@ -20,8 +22,8 @@ def chat_message(request):
     message_content = serializer.validated_data['message']
     conversation_id = serializer.validated_data.get('conversation_id')
     
-    # 3. Conversation handling
-    conversation = AIService.get_or_create_conversation(conversation_id)
+    # 3. Conversation handling - pass the authenticated user
+    conversation = AIService.get_or_create_conversation(conversation_id, user=request.user)
     
     # 4. Save user message
     user_message = Message.objects.create(
@@ -62,9 +64,11 @@ def chat_message(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_conversations(request):
-    # 1. Get last 10 conversations with prefetch
-    conversations = Conversation.objects.prefetch_related('messages') \
+    # 1. Get user's conversations only
+    conversations = Conversation.objects.filter(user=request.user) \
+                      .prefetch_related('messages') \
                       .order_by('-updated_at')[:10]
     
     # 2. Serialize with message count
@@ -77,12 +81,13 @@ def get_conversations(request):
     })
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_conversation(request, conversation_id):
     try:
-        # 1. Get full conversation with messages
+        # 1. Get user's conversation only
         conversation = Conversation.objects \
             .prefetch_related('messages') \
-            .get(id=conversation_id)
+            .get(id=conversation_id, user=request.user)
             
         # 2. Serialize with nested messages
         serializer = ConversationSerializer(conversation)
