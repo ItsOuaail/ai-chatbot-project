@@ -154,7 +154,7 @@ LOGGING = {
 }
 
 # Demo mode for testing without API calls
-DEMO_MODE = config('DEMO_MODE', default=True, cast=bool)
+DEMO_MODE = config('DEMO_MODE', default=False, cast=bool)
 
 # API Keys - provide default to avoid errors
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
