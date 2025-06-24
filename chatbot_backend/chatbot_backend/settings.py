@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'chat',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -122,7 +123,12 @@ REST_FRAMEWORK = {
 # Logging configuration
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
@@ -134,11 +140,24 @@ LOGGING = {
             'handlers': ['file'],
             'level': 'ERROR',
         },
+        'chat.services': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
 # Demo mode for testing without API calls
-DEMO_MODE = config('DEMO_MODE', default=False, cast=bool)
+# Demo mode for testing without API calls
+DEMO_MODE = config('DEMO_MODE', default=True, cast=bool)
 
-# API Keys
-GEMINI_API_KEY = config('GEMINI_API_KEY')
+# API Keys - provide default to avoid errors
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+
+# Cache configuration (add this if not already present)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}

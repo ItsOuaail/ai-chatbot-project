@@ -1,9 +1,13 @@
+import logging
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, ChatRequestSerializer, MessageSerializer
 from .services import AIService
+
+# Add logger
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 def chat_message(request):
@@ -54,10 +58,8 @@ def chat_message(request):
         'conversation_id': conversation.id,
         'user_message': MessageSerializer(user_message).data,
         'ai_message': MessageSerializer(ai_message).data,
-        'conversation_title': conversation.title  # Added from enhancement
+        'conversation_title': conversation.title
     })
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 def get_conversations(request):

@@ -1,18 +1,38 @@
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from .models import Conversation
 import logging
 
 logger = logging.getLogger(__name__)
 
 class AIService:
     @staticmethod
-    def get_ai_response(message):
+    def get_or_create_conversation(conversation_id=None):
+        """Get existing conversation or create a new one"""
+        if conversation_id:
+            try:
+                return Conversation.objects.get(id=conversation_id)
+            except Conversation.DoesNotExist:
+                logger.info(f"Conversation {conversation_id} not found, creating new one")
+        
+        # Create new conversation
+        return Conversation.objects.create(title="New Chat")
+    
+    @staticmethod
+    def get_ai_response(message, conversation_id=None):
         """
         Main method to get AI response - switches between demo and Gemini based on settings
+        conversation_id parameter added for compatibility with views but not used in current implementation
         """
-        if getattr(settings, 'DEMO_MODE', False):
+        demo_mode = getattr(settings, 'DEMO_MODE', False)
+        logger.info(f"AI Service - DEMO_MODE: {demo_mode}, Message: {message}")
+        
+        if demo_mode:
+            logger.info("Using demo response")
             return AIService._get_demo_response(message)
+        
+        logger.info("Using Gemini API")
         return AIService._get_gemini_response(message)
 
     @staticmethod
