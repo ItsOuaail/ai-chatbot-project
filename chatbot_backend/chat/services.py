@@ -8,16 +8,20 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     @staticmethod
-    def get_or_create_conversation(conversation_id=None):
-        """Get existing conversation or create a new one"""
-        if conversation_id:
+    def get_or_create_conversation(conversation_id=None, user=None):
+        """Get existing conversation or create a new one for a specific user"""
+        if conversation_id and user:
             try:
-                return Conversation.objects.get(id=conversation_id)
+                # Make sure the conversation belongs to the user
+                return Conversation.objects.get(id=conversation_id, user=user)
             except Conversation.DoesNotExist:
-                logger.info(f"Conversation {conversation_id} not found, creating new one")
+                logger.info(f"Conversation {conversation_id} not found for user {user.username}, creating new one")
         
-        # Create new conversation
-        return Conversation.objects.create(title="New Chat")
+        # Create new conversation for the user
+        if user:
+            return Conversation.objects.create(title="New Chat", user=user)
+        else:
+            raise ValueError("User is required to create a conversation")
     
     @staticmethod
     def get_ai_response(message, conversation_id=None):
