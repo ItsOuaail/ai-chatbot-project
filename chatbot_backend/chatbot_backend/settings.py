@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',  # Added this - REQUIRED for Token authentication
     'corsheaders',
     'chat',
     'django_extensions',
@@ -113,11 +114,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-# REST Framework settings
+# REST Framework settings - UPDATED
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ]
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 # Logging configuration
@@ -148,7 +153,6 @@ LOGGING = {
     },
 }
 
-# Demo mode for testing without API calls
 # Demo mode for testing without API calls
 DEMO_MODE = config('DEMO_MODE', default=True, cast=bool)
 
