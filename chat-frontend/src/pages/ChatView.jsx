@@ -21,8 +21,17 @@ const ChatView = () => {
   const fetchConversation = async () => {
     try {
       const response = await api.get(`/api/conversations/${id}/`);
-      setMessages(response.data.messages || []);
-      setConversationTitle(response.data.title);
+      console.log('Fetched conversation:', response.data);
+      
+      // Parse the conversation structure to extract messages
+      if (response.data.conversation) {
+        setMessages(response.data.conversation.messages || []);
+        setConversationTitle(response.data.conversation.title);
+      } else {
+        // Fallback for direct message array
+        setMessages(response.data.messages || []);
+        setConversationTitle(response.data.title || 'Chat');
+      }
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
       navigate('/dashboard');

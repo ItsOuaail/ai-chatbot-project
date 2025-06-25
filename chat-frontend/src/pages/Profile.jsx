@@ -19,7 +19,7 @@ const Profile = () => {
                   Username
                 </label>
                 <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {user.username}
+                  {user.user.username}
                 </p>
               </div>
               
@@ -28,7 +28,7 @@ const Profile = () => {
                   Email
                 </label>
                 <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {user.email}
+                  {user.user.email}
                 </p>
               </div>
               
@@ -37,7 +37,7 @@ const Profile = () => {
                   First Name
                 </label>
                 <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {user.first_name || 'Not provided'}
+                  {user.user.first_name || 'Not provided'}
                 </p>
               </div>
               
@@ -46,7 +46,7 @@ const Profile = () => {
                   Last Name
                 </label>
                 <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {user.last_name || 'Not provided'}
+                  {user.user.last_name || 'Not provided'}
                 </p>
               </div>
               
@@ -55,7 +55,7 @@ const Profile = () => {
                   Member Since
                 </label>
                 <p className="text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                  {new Date(user.date_joined).toLocaleDateString()}
+                  {new Date(user.user.date_joined).toLocaleDateString()}
                 </p>
               </div>
             </div>

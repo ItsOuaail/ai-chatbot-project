@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const fetchProfile = async () => {
     try {
       const response = await api.get('/api/auth/profile/');
+      console.log('Fetched user profile:', response.data);
       setUser(response.data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
