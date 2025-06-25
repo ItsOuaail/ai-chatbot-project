@@ -43,7 +43,7 @@ const Login = () => {
             Welcome back
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sign in to access your dashboard
+            Sign in to access your HxH AI
           </p>
         </div>
 

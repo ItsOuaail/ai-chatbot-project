@@ -26,7 +26,7 @@ const Layout = ({ children }) => {
                   <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
-                  <span className="text-xl font-semibold text-gray-900">ChatAI</span>
+                  <span className="text-xl font-semibold text-gray-900">HxH AI</span>
                 </Link>
                 <nav className="hidden md:flex space-x-4">
                   <Link 
@@ -78,7 +78,7 @@ const Layout = ({ children }) => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-sm text-gray-500">
-                © {new Date().getFullYear()} ChatAI. All rights reserved.
+                © {new Date().getFullYear()} HxH AI. All rights reserved.
               </p>
               <div className="flex space-x-6 mt-4 md:mt-0">
                 <a href="#" className="text-gray-400 hover:text-gray-500">
