@@ -43,6 +43,9 @@ services:
       context: ./chatbot_backend
       dockerfile: Dockerfile
     container_name: chatbot_backend
+    # Add env_file to load .env file
+    env_file:
+      - .env
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-your-secret-key-here}
@@ -55,8 +58,12 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,chatbot_backend}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-True}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Make sure these are properly set
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DEMO_MODE=${DEMO_MODE:-False}
+      # Add timeout settings
+      - REQUESTS_TIMEOUT=30
+      - GEMINI_TIMEOUT=30
     volumes:
       - ./chatbot_backend:/app
       - static_volume:/app/staticfiles
@@ -70,10 +77,31 @@ services:
         condition: service_healthy
     networks:
       - chatbot_network
+    # Enhanced DNS and networking settings
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    extra_hosts:
+      - "generativelanguage.googleapis.com:142.250.191.106"
+      - "googleapis.com:142.250.191.106"
+    # Add security options for network access
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    # Updated command with better error handling and development mode
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "echo 'Starting Django backend...' &&
+             echo 'Testing network connectivity...' &&
+             ping -c 1 8.8.8.8 || echo 'DNS ping failed' &&
+             echo 'GEMINI_API_KEY status:' $$GEMINI_API_KEY &&
+             echo 'DEMO_MODE:' $$DEMO_MODE &&
+             python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn --bind 0.0.0.0:8000 chatbot_backend.wsgi:application"
+             python manage.py runserver 0.0.0.0:8000"
+    # Add restart policy
+    restart: unless-stopped
 
   # React Frontend
   frontend:
@@ -90,6 +118,7 @@ services:
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
       - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000/ws}
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -100,3 +129,5 @@ volumes:
 networks:
   chatbot_network:
     driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false" 
