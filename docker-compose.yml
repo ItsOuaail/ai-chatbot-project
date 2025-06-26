@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: chatbot_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-chatbot_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-chatbot_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-chatbot_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Django Channels and Celery
+  redis:
+    image: redis:7-alpine
+    container_name: chatbot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend
+  backend:
+    build: 
+      context: ./chatbot_backend
+      dockerfile: Dockerfile
+    container_name: chatbot_backend
+    # Add env_file to load .env file
+    env_file:
+      - .env
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-your-secret-key-here}
+      - DB_NAME=${DB_NAME:-chatbot_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-chatbot_secure_password}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/1
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,chatbot_backend}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1}
+      - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS:-True}
+      # Make sure these are properly set
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DEMO_MODE=${DEMO_MODE:-False}
+      # Add timeout settings
+      - REQUESTS_TIMEOUT=30
+      - GEMINI_TIMEOUT=30
+    volumes:
+      - ./chatbot_backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chatbot_network
+    # Enhanced DNS and networking settings
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    extra_hosts:
+      - "generativelanguage.googleapis.com:142.250.191.106"
+      - "googleapis.com:142.250.191.106"
+    # Add security options for network access
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    # Updated command with better error handling and development mode
+    command: >
+      sh -c "echo 'Starting Django backend...' &&
+             echo 'Testing network connectivity...' &&
+             ping -c 1 8.8.8.8 || echo 'DNS ping failed' &&
+             echo 'GEMINI_API_KEY status:' $$GEMINI_API_KEY &&
+             echo 'DEMO_MODE:' $$DEMO_MODE &&
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    # Add restart policy
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./chat-frontend
+      dockerfile: Dockerfile
+    container_name: chatbot_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - chatbot_network
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:8000/ws}
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
+
+networks:
+  chatbot_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false" 

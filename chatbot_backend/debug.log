@@ -286,3 +286,5 @@ Traceback (most recent call last):
                      ^^^^^^^^^^^^^
 AttributeError: type object 'Token' has no attribute 'objects'
 "POST /api/auth/login/ HTTP/1.1" 500 100808
+ERROR 2025-06-26 15:38:03,102 log 11 140464607405760 Internal Server Error: /api/chat/
+ERROR 2025-06-26 15:38:03,110 basehttp 11 140464607405760 "POST /api/chat/ HTTP/1.1" 500 86

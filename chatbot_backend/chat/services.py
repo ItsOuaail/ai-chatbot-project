@@ -2,22 +2,22 @@ import logging
 from django.conf import settings
 from django.core.cache import cache
 from .models import Conversation, Message
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
 class AIService:
-    _client = None
+    _configured = False
     
     @classmethod
-    def get_client(cls):
-        """Get or create the Gemini client"""
-        if cls._client is None and not settings.DEMO_MODE:
+    def configure_gemini(cls):
+        """Configure Gemini API - only needs to be done once"""
+        if not cls._configured and not settings.DEMO_MODE:
             if not settings.GEMINI_API_KEY:
                 raise ValueError("GEMINI_API_KEY is required when DEMO_MODE is False")
-            cls._client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        return cls._client
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            cls._configured = True
+            logger.info("Gemini API configured successfully")
     
     @staticmethod
     def get_or_create_conversation(conversation_id=None, user=None):
@@ -95,8 +95,7 @@ class AIService:
     @staticmethod
     def _get_gemini_response(message, conversation_history=None):
         """
-        Enhanced Gemini API implementation using the new Google GenAI SDK
-        Includes conversation history for better context
+        Fixed Gemini API implementation using the correct Google GenAI SDK
         """
         # Create cache key that includes conversation context
         context_hash = hash(str([msg.content for msg in (conversation_history or [])]))
@@ -108,59 +107,47 @@ class AIService:
             return cached_response
 
         try:
-            client = AIService.get_client()
-            if not client:
-                raise ValueError("Gemini client not available")
+            # Configure Gemini API
+            AIService.configure_gemini()
             
-            # Prepare conversation messages
-            messages = []
+            # Create the model
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            # Add conversation history if available
+            # Prepare conversation context
+            conversation_text = ""
             if conversation_history:
                 for msg in conversation_history:
-                    role = "user" if msg.is_user else "model"
-                    # Fixed: Use text parameter instead of positional argument
-                    messages.append(types.Content(
-                        role=role,
-                        parts=[types.Part(text=msg.content)]
-                    ))
+                    role = "User" if msg.is_user else "Assistant"
+                    conversation_text += f"{role}: {msg.content}\n"
             
-            # Add the current message
-            # Fixed: Use text parameter instead of positional argument
-            messages.append(types.Content(
-                role="user",
-                parts=[types.Part(text=message)]
-            ))
+            # Combine context with current message
+            if conversation_text:
+                full_prompt = f"Previous conversation:\n{conversation_text}\nUser: {message}\nAssistant:"
+            else:
+                full_prompt = message
             
-            # Generate response using Gemini 1.5 Flash
-            response = client.models.generate_content(
-                model='gemini-1.5-flash',
-                contents=messages,
-                config=types.GenerateContentConfig(
+            # Generate response
+            response = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
                     temperature=0.7,
                     max_output_tokens=1500,
                     top_p=0.8,
                     top_k=40,
-                    stop_sequences=None,
-                    response_mime_type="text/plain"
                 )
             )
             
             # Extract response text
-            if response.candidates and len(response.candidates) > 0:
-                candidate = response.candidates[0]
-                if candidate.content and candidate.content.parts:
-                    ai_text = candidate.content.parts[0].text
-                    
-                    # Cache the response for 1 hour
-                    cache.set(cache_key, ai_text, timeout=3600)
-                    
-                    logger.info("Successfully generated Gemini response")
-                    return ai_text
-                else:
-                    raise ValueError("No content in response candidate")
+            if response.text:
+                ai_text = response.text.strip()
+                
+                # Cache the response for 1 hour
+                cache.set(cache_key, ai_text, timeout=3600)
+                
+                logger.info("Successfully generated Gemini response")
+                return ai_text
             else:
-                raise ValueError("No candidates in response")
+                raise ValueError("No text in response")
 
         except Exception as e:
             logger.error(f"Gemini API error: {str(e)}")
