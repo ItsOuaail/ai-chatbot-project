@@ -2,8 +2,8 @@ import logging
 from django.conf import settings
 from django.core.cache import cache
 from .models import Conversation, Message
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 
 logger = logging.getLogger(__name__)
 
