@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - app-network
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/yourusername/your-repo-backend:latest}
+    command: gunicorn --bind 0.0.0.0:8000 your_project.wsgi:application
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - 8000
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/yourusername/your-repo-frontend:latest}
+    networks:
+      - app-network
+
+  nginx:
+    image: ${NGINX_IMAGE:-ghcr.io/yourusername/your-repo-nginx:latest}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:  
+  app-network:
+    driver: bridge

@@ -1,0 +1,124 @@
+name: Deploy Backend to Azure
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'chatbot_backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: chatbotacr.azurecr.io
+  CONTAINER_NAME: chatbot-backend
+  RESOURCE_GROUP: chatbot-rg
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        cd chatbot_backend
+        pip install -r requirements.txt
+
+    - name: Run Django tests
+      env:
+        DB_NAME: test_db
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_HOST: localhost
+        DB_PORT: 5432
+        REDIS_URL: redis://localhost:6379/1
+        SECRET_KEY: test-secret-key
+        DEBUG: True
+        GEMINI_API_KEY: test-key
+        DEMO_MODE: True
+      run: |
+        cd chatbot_backend
+        python manage.py migrate
+        python manage.py test
+
+  build-and-deploy:
+    needs: test-backend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build and push Docker image
+      run: |
+        cd chatbot_backend
+        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/chatbot-backend:${{ github.sha }} .
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/chatbot-backend:${{ github.sha }}
+
+    - name: Deploy to Azure Container Instances
+      uses: azure/aci-deploy@v1
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        dns-name-label: chatbot-backend-unique
+        image: ${{ env.AZURE_CONTAINER_REGISTRY }}/chatbot-backend:${{ github.sha }}
+        name: ${{ env.CONTAINER_NAME }}
+        location: eastus
+        ports: 8000
+        environment-variables: |
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=False
+          ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+          CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+          CORS_ALLOW_ALL_ORIGINS=False
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          DEMO_MODE=False
+          REQUESTS_TIMEOUT=30
+          GEMINI_TIMEOUT=30
+        secure-environment-variables: |
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
