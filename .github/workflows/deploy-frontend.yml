@@ -1,0 +1,57 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'chat-frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: chat-frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd chat-frontend
+        npm ci
+
+    - name: Run tests
+      run: |
+        cd chat-frontend
+        npm run test -- --run
+
+    - name: Build application
+      env:
+        VITE_API_URL: ${{ secrets.VITE_API_URL_PROD }}
+        VITE_WS_URL: ${{ secrets.VITE_WS_URL_PROD }}
+      run: |
+        cd chat-frontend
+        npm run build
+
+  deploy-to-vercel:
+    needs: test-frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./chat-frontend
+        vercel-args: '--prod'
