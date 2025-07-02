@@ -1,6 +1,9 @@
-import { render } from '@testing-library/react';
-import App from './App';
+import { describe, expect, it } from 'vitest'
+import { render } from '@testing-library/react'
+import App from './App'
 
-test('renders learn react link', () => {
-  render(<App />);
-});
+describe('App component', () => {
+  it('renders without crashing', () => {
+    render(<App />)
+  })
+})
