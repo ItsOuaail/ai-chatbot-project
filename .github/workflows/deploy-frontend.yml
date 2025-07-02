@@ -47,6 +47,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install Vercel CLI globally
+      run: npm install -g vercel@latest
+
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
@@ -54,4 +57,7 @@ jobs:
         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         working-directory: ./chat-frontend
-        vercel-args: '--prod'
+        vercel-args: '--prod --confirm'
+      env:
+        VITE_API_URL: ${{ secrets.VITE_API_URL_PROD }}
+        VITE_WS_URL: ${{ secrets.VITE_WS_URL_PROD }}
